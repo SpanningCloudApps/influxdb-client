@@ -40,4 +40,14 @@ public class FieldTest {
         new Field("badData", new Object()).lineProtocolString();
     }
     
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorNullFieldName() {
+        new Field(null, new Object());
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorEmptyFieldName() {
+        new Field("", new Object());
+    }
+    
 }

@@ -16,4 +16,24 @@ public class TagTest {
         assertEquals("key\\ \\,name=\\,key\\,\\ value", new Tag("key ,name", ",key, value").lineProtocolString());
     }
     
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorNullTagName() {
+        new Tag(null, "tagValue");
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorNullTagValue() {
+        new Tag("tagName", null);
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorEmptyTagName() {
+        new Tag("", "tagValue");
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorEmptyTagValue() {
+        new Tag("tagName", "");
+    }
+    
 }

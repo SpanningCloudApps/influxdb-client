@@ -23,13 +23,16 @@ public class DataPoint {
     private final String measurementName;
     private final List<Tag> tags;
     private final List<Field> fields;
-    private final Instant instant;
+    private final long timestamp;
+    private final TimestampPrecision timestampPrecision;
 
-    DataPoint(String measurementName, List<Tag> tags, List<Field> fields, Instant instant) {
+    DataPoint(String measurementName, List<Tag> tags, List<Field> fields, long timestamp,
+              TimestampPrecision timestampPrecision) {
         this.measurementName = measurementName;
         this.tags = tags;
         this.fields = fields;
-        this.instant = instant;
+        this.timestamp = timestamp;
+        this.timestampPrecision = timestampPrecision;
     }
 
     public String getMeasurementName() {
@@ -44,8 +47,12 @@ public class DataPoint {
         return Collections.unmodifiableList(fields);
     }
 
-    public Instant getInstant() {
-        return instant;
+    public long getTimestamp() {
+        return timestamp;
+    }
+    
+    public TimestampPrecision getTimestampPrecision() {
+        return timestampPrecision;
     }
 
     /**
@@ -67,10 +74,10 @@ public class DataPoint {
                 .map(Field::lineProtocolString)
                 .collect(Collectors.joining(","));
 
-        // 3) The timestamp section, which is the timestamp, in ms since epoch.
-        // Note: InfluxDB can accept different precisions (default is ns), but it's assumed that the client will always
-        // write points with a precision of "ms".
-        String timestampString = String.valueOf(instant.toEpochMilli());
+        // 3) The timestamp section, which is the string value of the timestamp, in "duration since epoch", where the
+        //    duration's precision is either nanoseconds, microseconds, milliseconds, seconds, minutes, or hours. The
+        //    duration's precision is determined by the timestampPrecision member.
+        String timestampString = String.valueOf(timestamp);
 
         // The three line protocol sections are joined with spaces to create a complete data point.
         return String.join(" ", keyString, fieldsString, timestampString);
@@ -84,10 +91,14 @@ public class DataPoint {
         private final String measurementName;
         private final List<Tag> tags = new ArrayList<>();
         private final List<Field> fields = new ArrayList<>();
-        private Instant instant = Instant.now();
+        private long timestamp = Instant.now().toEpochMilli();
+        private TimestampPrecision timestampPrecision = TimestampPrecision.MILLISECONDS;
         
         public Builder(String measurementName) {
-            this.measurementName = requireNonNull(measurementName, "measurementName can't be null");
+            if (measurementName == null || measurementName.isEmpty()) {
+                throw new IllegalArgumentException("measurementName can't be null or empty");
+            }
+            this.measurementName = measurementName;
         }
 
         public Builder withTag(String tagName, String tagValue) {
@@ -96,22 +107,23 @@ public class DataPoint {
         }
 
         public Builder withField(String fieldName, String fieldValue) {
-            fields.add(Field.create(fieldName, fieldValue));
+            fields.add(new Field(fieldName, fieldValue));
             return this;
         }
 
         public Builder withField(String fieldName, Number fieldValue) {
-            fields.add(Field.create(fieldName, fieldValue));
+            fields.add(new Field(fieldName, fieldValue));
             return this;
         }
 
         public Builder withField(String fieldName, Boolean fieldValue) {
-            fields.add(Field.create(fieldName, fieldValue));
+            fields.add(new Field(fieldName, fieldValue));
             return this;
         }
 
-        public Builder withInstant(Instant instant) {
-            this.instant = instant;
+        public Builder withTimestamp(long timestamp, TimestampPrecision timestampPrecision) {
+            this.timestamp = timestamp;
+            this.timestampPrecision = requireNonNull(timestampPrecision, "timestampPrecision can't be null");
             return this;
         }
 
@@ -123,7 +135,8 @@ public class DataPoint {
             if (fields.isEmpty()) {
                 throw new IllegalStateException("At least 1 field must be provided.");
             }
-            return new DataPoint(measurementName, new ArrayList<>(tags), new ArrayList<>(fields), instant);
+            return new DataPoint(measurementName, new ArrayList<>(tags), new ArrayList<>(fields), timestamp,
+                    timestampPrecision);
         }
         
     }

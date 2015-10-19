@@ -13,11 +13,9 @@ import java.util.stream.Stream;
 public class LineProtocolStringUtils {
 
     private static final String ESCAPE_FORMAT = "\\\\%s";
-    private static final String KV_FORMAT = "%s=%s";
 
     /**
      * Escape all spaces and commas in a string.
-     *
      * @param rawString The string.
      * @return {@code rawString} with all spaces and commas escaped with a backslash.
      */
@@ -27,7 +25,6 @@ public class LineProtocolStringUtils {
 
     /**
      * Escape all double quotes in a string.
-     *
      * @param rawString The string.
      * @return {@code rawString} with all double quotes escaped.
      */

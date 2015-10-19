@@ -31,7 +31,7 @@ import static java.util.Objects.requireNonNull;
  */
 public class InfluxDbHttpClient implements InfluxDbClient {
     
-    private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDbHttpClient.class);
+    private static final Logger logger = LoggerFactory.getLogger(InfluxDbHttpClient.class);
     static final int NO_CONTENT_STATUS_CODE = 204;
     static final String AUTH_HEADER_NAME = "Authorization";
     static final MediaType TEXT_PLAIN = MediaType.parse("text/plain");
@@ -81,25 +81,33 @@ public class InfluxDbHttpClient implements InfluxDbClient {
     }
 
     @Override
-    public void writePoints(String database, String retentionPolicy, List<DataPoint> points) {
+    public void writePoints(String database, Optional<String> retentionPolicy, List<DataPoint> points) {
+        if (points == null || points.isEmpty()) {
+            throw new IllegalArgumentException("points must contain at least one DataPoint");
+        }
+        
+        // Use the precision from the first point in points.
+        String precisionString = points.get(0).getTimestampPrecision().getStringValue();
+        
         // Get the line protocol string for each point and join with newlines.
         String lineProtocolString = points.stream()
                 .map(DataPoint::lineProtocolString)
                 .collect(Collectors.joining("\n"));
 
         // Build the URL.
-        HttpUrl url = urlBuilder(Endpoint.WRITE)
+        HttpUrl.Builder urlBuilder = urlBuilder(Endpoint.WRITE)
                 .addQueryParameter(QueryParam.DATABASE, database)
-                .addQueryParameter(QueryParam.RETENTION_POLICY, retentionPolicy)
-                .addQueryParameter(QueryParam.PRECISION, MS_PRECISION)
-                .build();
+                .addQueryParameter(QueryParam.PRECISION, precisionString);
+        
+        // If a retention policy was specified, add it as a query param.
+        retentionPolicy.ifPresent(rp -> urlBuilder.addQueryParameter(QueryParam.RETENTION_POLICY, rp));
         
         // Build the request.
-        Request request = requestBuilder(url)
+        Request request = requestBuilder(urlBuilder.build())
                 .post(RequestBody.create(TEXT_PLAIN, lineProtocolString))
                 .build();
         
-        LOGGER.debug("InfluxDB write request: {}", request);
+        logger.debug("InfluxDB write request: {}", request);
         
         // Execute the request.
         Response response;
@@ -109,17 +117,15 @@ public class InfluxDbHttpClient implements InfluxDbClient {
             throw new UncheckedIOException(e);
         }
         
-        LOGGER.debug("InfluxDB write response: {}", response);
+        logger.debug("InfluxDB write response: {}", response);
         
         // The response status code should be 204 (no content). If not, throw an exception.
         if (response.code() != NO_CONTENT_STATUS_CODE) {
-            LOGGER.debug("Got invalid status code in response to InfluxDB write request: {}", response.code());
+            logger.debug("Expected {} status code, but got {} in response to InfluxDB write request.",
+                    NO_CONTENT_STATUS_CODE, response.code());
             
             // Get the response body as a string, because it probably contains some info about the error that occurred.
-            String responseBodyString = Optional.ofNullable(response.body())
-                    .map(InfluxDbHttpClient::getResponseBodyString)
-                    .orElse("");
-            throw new InfluxDbHttpWriteException(response.code(), responseBodyString);
+            throw new InfluxDbHttpWriteException(response.code(), getResponseBodyString(response));
         }
     }
 
@@ -150,7 +156,20 @@ public class InfluxDbHttpClient implements InfluxDbClient {
     }
 
     /**
-     * Get a response's body as a string, rethrowing any {@link IOException} that occurs as an {@link UncheckedIOException}.
+     * Get the response body of a {@link Response} as a string, rethrowing any {@link IOException} that occurs as an
+     * {@link UncheckedIOException}.
+     * @param response A {@link Response}.
+     * @return A string containing the response body, or an empty optional if there was no body.
+     */
+    private static String getResponseBodyString(Response response) {
+        return Optional.ofNullable(response.body())
+                .map(InfluxDbHttpClient::getResponseBodyString)
+                .orElse("");
+    }
+
+    /**
+     * Get the string content of a {@link ResponseBody}, rethrowing any {@link IOException} that occurs as an
+     * {@link UncheckedIOException}.
      * @param responseBody A {@link ResponseBody}.
      * @return The string value of the response body.
      */

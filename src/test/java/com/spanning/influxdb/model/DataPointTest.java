@@ -15,10 +15,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class DataPointTest {
-
+    
     @Test
     public void testLineProtocolString() {
-        Instant instant = Instant.now();
+        long timestamp = Instant.now().toEpochMilli();
         String tagLineProtocolString = "tagLineProtocolString";
         String fieldLineProtocolString = "fieldLineProtocolString";
         String measurementName = " measurementName,";
@@ -33,10 +33,31 @@ public class DataPointTest {
 
         // Create a DataPoint and assert its line protocol string is expected.
         DataPoint dataPoint = new DataPoint(measurementName, Collections.singletonList(tag),
-                Collections.singletonList(field), instant);
+                Collections.singletonList(field), timestamp, TimestampPrecision.MILLISECONDS);
+        
+        // The only string that is expected to be escaped by DataPoint.lineProtocolString is measurementName, which
+        // is why it's the only string in this test that contains a space/comma (tagLineProtocolString and
+        // fieldLineProtocolString are the responses of the mocked tag.lineProtocolString/field.lineProtocolString
+        // methods, so it's assumed they're already escaped).
         String expectedLineProtocolString = LineProtocolStringUtils.escapeSpacesAndCommas(measurementName) + "," +
-                tagLineProtocolString + " " + fieldLineProtocolString + " " + instant.toEpochMilli();
+                tagLineProtocolString + " " + fieldLineProtocolString + " " + timestamp;
         assertEquals(expectedLineProtocolString, dataPoint.lineProtocolString());
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testBuilderConstructorNullMeasurementName() {
+        new DataPoint.Builder(null);
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testBuilderConstructorEmptyMeasurementName() {
+        new DataPoint.Builder("");
+    }
+    
+    @Test(expected = IllegalStateException.class)
+    public void testBuildDataPointWithNoFields() {
+        // Attempting to build a DataPoint without specifying at least one field should throw an IllegalStateException.
+        new DataPoint.Builder("measurementName").build();
     }
     
 }

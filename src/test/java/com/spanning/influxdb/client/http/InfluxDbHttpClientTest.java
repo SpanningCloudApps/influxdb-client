@@ -6,6 +6,7 @@ package com.spanning.influxdb.client.http;
 
 import com.spanning.influxdb.client.exception.InfluxDbHttpWriteException;
 import com.spanning.influxdb.model.DataPoint;
+import com.spanning.influxdb.model.TimestampPrecision;
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Credentials;
 import com.squareup.okhttp.HttpUrl;
@@ -26,6 +27,7 @@ import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +37,11 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -61,24 +66,39 @@ public class InfluxDbHttpClientTest {
     
     @Test
     public void testWritePoints() throws IOException {
-        // When a write request is executed, answer with a response indicating the request was executed successfully.
-        Answer<Response> executeWriteRequestAnswer = responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null);
-
-        // Since the request is executed successfully, no exception should be thrown.
-        writePoints(executeWriteRequestAnswer);
+        // When a request is executed using httpClient, answer with a response indicating the request was executed
+        // successfully.
+        Call call = mockHttpClientResponse(responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null));
+        
+        // Write a list of data points using the InfluxDB client and verify that the expected request was executed.
+        List<DataPoint> points = getMockedDataPoints("lineProtocolString");
+        influxDbHttpClient.writePoints(DATABASE, Optional.of(RETENTION_POLICY), points);
+        
+        // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
+        // should have been "call", so also verify that it was executed.
+        verify(httpClient, times(1)).newCall(writePointsRequest(points));
+        verify(call, times(1)).execute();
     }
     
     @Test(expected = UncheckedIOException.class)
     public void testWritePointsIOExceptionWhenExecutingRequest() throws IOException {
         // When the write request is executed, throw a known IOException.
         IOException expectedCause = new IOException("something bad happened");
-        
+        Call call = mockHttpClientResponse(invocation -> { throw expectedCause; });
+
+        // Write a list of data points using the InfluxDB client.
+        List<DataPoint> points = getMockedDataPoints("lineProtocolString");
         try {
-            writePoints(invocation -> { throw expectedCause; });
+            influxDbHttpClient.writePoints(DATABASE, Optional.of(RETENTION_POLICY), points);
         } catch (UncheckedIOException e) {
             // Assert that the exception has the expected cause.
             assertSame(expectedCause, e.getCause());
             throw e;
+        } finally {
+            // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
+            // should have been "call", so also verify that it was executed.
+            verify(httpClient, times(1)).newCall(writePointsRequest(points));
+            verify(call, times(1)).execute();
         }
     }
     
@@ -89,37 +109,62 @@ public class InfluxDbHttpClientTest {
         int statusCode = 500;
         Answer<Response> executeWriteRequestAnswer = responseAnswer(
                 statusCode, ResponseBody.create(InfluxDbHttpClient.TEXT_PLAIN, responseBody));
-        
+        Call call = mockHttpClientResponse(executeWriteRequestAnswer);
+
+        // Write a list of data points using the InfluxDB client.
+        List<DataPoint> points = getMockedDataPoints("lineProtocolString");
         try {
             // Since the status isn't "no content", the attempt to write should throw an InfluxDbHttpWriteException.
-            writePoints(executeWriteRequestAnswer);
+            influxDbHttpClient.writePoints(DATABASE, Optional.of(RETENTION_POLICY), points);
         } catch (InfluxDbHttpWriteException e) {
             assertEquals(statusCode, e.getStatusCode());
             assertEquals(responseBody, e.getResponseBody());
             throw e;
+        } finally {
+            // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
+            // should have been "call", so also verify that it was executed.
+            verify(httpClient, times(1)).newCall(writePointsRequest(points));
+            verify(call, times(1)).execute();
         }
     }
     
+    @Test(expected = IllegalArgumentException.class)
+    public void testWritePointsNullPointsList() {
+        // Attempt to write a null list of points. This should cause the client to throw an IllegalArgumentException.
+        influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, null);
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testWritePointsEmptyPointsList() {
+        // Attempt to write an empty list of points. This should cause the client to throw an IllegalArgumentException.
+        influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, Collections.emptyList());
+    }
+
     /**
-     * Attempt to write points to InfluxDB using {@link #influxDbHttpClient}.
-     * @param responseAnswer The answer describing how {@link #influxDbHttpClient} should response to a write request.
+     * Mock {@link #httpClient} to respond to all requests with an answer.
+     * @param responseAnswer An {@link Answer}.
+     * @return A {@link Call}, that when executed, will answer with {@code responseAnswer}. This is also the call that
+     * will be returned any time the {@link OkHttpClient#newCall} method is called on {@link #httpClient}.
      */
-    private void writePoints(Answer<Response> responseAnswer) throws IOException {
-        // Create a list of mocked DataPoints to write to InfluxDB.
-        String lineProtocolString = "dataPointLPString";
-        List<DataPoint> dataPoints = Stream.generate(() -> mockDataPoint(lineProtocolString))
+    private Call mockHttpClientResponse(Answer<Response> responseAnswer) throws IOException {
+        // Mock a Call that answers with responseAnswer when executed.
+        Call newCall = mock(Call.class);
+        when(newCall.execute()).then(responseAnswer);
+        
+        // Mock httpClient.newCall to return newCall.
+        when(httpClient.newCall(any())).thenReturn(newCall);
+        return newCall;
+    }
+
+    /**
+     * Get a list of mocked {@link DataPoint DataPoints} that have a specified line protocol string.
+     * @param lineProtocolString The line protocol string.
+     * @return A list of {@link DataPoint DataPoints}.
+     */
+    private List<DataPoint> getMockedDataPoints(String lineProtocolString) {
+        return Stream.generate(() -> mockDataPoint(lineProtocolString))
                 .limit(10)
                 .collect(Collectors.toList());
-        
-        // Mock a Call that answers with responseAnswer when executed.
-        Call writeCall = mock(Call.class);
-        when(writeCall.execute()).then(responseAnswer);
-        
-        // Mock influxDbHttpClient to return writeCall when a new call is created for the expected write request.
-        when(httpClient.newCall(writePointsRequest(dataPoints))).thenReturn(writeCall);
-        
-        // Write the points.
-        influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, dataPoints);
     }
 
     /**
@@ -139,6 +184,7 @@ public class InfluxDbHttpClientTest {
     private static DataPoint mockDataPoint(String lineProtocolString) {
         DataPoint dataPoint = mock(DataPoint.class);
         when(dataPoint.lineProtocolString()).thenReturn(lineProtocolString);
+        when(dataPoint.getTimestampPrecision()).thenReturn(TimestampPrecision.MILLISECONDS);
         return dataPoint;
     }
 
@@ -172,7 +218,7 @@ public class InfluxDbHttpClientTest {
         private static final Map<String, String> EXPECTED_QUERY_PARAMS = new HashMap<String, String>() {{
             put(InfluxDbHttpClient.QueryParam.DATABASE, DATABASE);
             put(InfluxDbHttpClient.QueryParam.RETENTION_POLICY, RETENTION_POLICY);
-            put(InfluxDbHttpClient.QueryParam.PRECISION, InfluxDbHttpClient.MS_PRECISION);
+            put(InfluxDbHttpClient.QueryParam.PRECISION, TimestampPrecision.MILLISECONDS.getStringValue());
         }};
         
         private final List<DataPoint> dataPoints;
