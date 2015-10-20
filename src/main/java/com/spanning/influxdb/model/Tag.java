@@ -4,7 +4,10 @@
  */
 package com.spanning.influxdb.model;
 
+import com.google.common.base.Strings;
 import com.spanning.influxdb.util.LineProtocolStringUtils;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Class representing an InfluxDB tag.
@@ -15,12 +18,8 @@ public class Tag {
     private final String value;
 
     public Tag(String name, String value) {
-        if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException("name can't be null or empty");
-        }
-        if (value == null || value.isEmpty()) {
-            throw new IllegalArgumentException("value can't be null or empty");
-        }
+        checkArgument(!Strings.isNullOrEmpty(name), "name can't be null or empty");
+        checkArgument(!Strings.isNullOrEmpty(value), "value can't be null or empty");
         this.name = name;
         this.value = value;
     }

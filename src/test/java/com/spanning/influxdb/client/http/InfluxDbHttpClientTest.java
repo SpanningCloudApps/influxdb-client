@@ -65,6 +65,38 @@ public class InfluxDbHttpClientTest {
     }
     
     @Test
+    public void testWritePoint() throws IOException {
+        // When a request is executed using httpClient, answer with a response indicating the request was executed
+        // successfully.
+        Call call = mockHttpClientResponse(responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null));
+        
+        // Write a data point using the InfluxDB client and verify that the expected request was executed.
+        DataPoint point = mockDataPoint("lineProtocolString");
+        influxDbHttpClient.writePoint(DATABASE, point);
+        
+        // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
+        // should have been "call", so also verify that it was executed.
+        verify(httpClient, times(1)).newCall(writePointRequest(point));
+        verify(call, times(1)).execute();
+    }
+    
+    @Test
+    public void testWritePointWithRP() throws IOException {
+        // When a request is executed using httpClient, answer with a response indicating the request was executed
+        // successfully.
+        Call call = mockHttpClientResponse(responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null));
+
+        // Write a data point using the InfluxDB client and verify that the expected request was executed.
+        DataPoint point = mockDataPoint("lineProtocolString");
+        influxDbHttpClient.writePoint(DATABASE, RETENTION_POLICY, point);
+
+        // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
+        // should have been "call", so also verify that it was executed.
+        verify(httpClient, times(1)).newCall(writePointRequest(point, RETENTION_POLICY));
+        verify(call, times(1)).execute();
+    }
+    
+    @Test
     public void testWritePoints() throws IOException {
         // When a request is executed using httpClient, answer with a response indicating the request was executed
         // successfully.
@@ -72,11 +104,27 @@ public class InfluxDbHttpClientTest {
         
         // Write a list of data points using the InfluxDB client and verify that the expected request was executed.
         List<DataPoint> points = getMockedDataPoints("lineProtocolString");
-        influxDbHttpClient.writePoints(DATABASE, Optional.of(RETENTION_POLICY), points);
+        influxDbHttpClient.writePoints(DATABASE, points);
         
         // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
         // should have been "call", so also verify that it was executed.
         verify(httpClient, times(1)).newCall(writePointsRequest(points));
+        verify(call, times(1)).execute();
+    }
+    
+    @Test
+    public void testWritePointsWithRP() throws IOException {
+        // When a request is executed using httpClient, answer with a response indicating the request was executed
+        // successfully.
+        Call call = mockHttpClientResponse(responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null));
+
+        // Write a list of data points using the InfluxDB client and verify that the expected request was executed.
+        List<DataPoint> points = getMockedDataPoints("lineProtocolString");
+        influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, points);
+
+        // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
+        // should have been "call", so also verify that it was executed.
+        verify(httpClient, times(1)).newCall(writePointsRequest(points, RETENTION_POLICY));
         verify(call, times(1)).execute();
     }
     
@@ -89,7 +137,7 @@ public class InfluxDbHttpClientTest {
         // Write a list of data points using the InfluxDB client.
         List<DataPoint> points = getMockedDataPoints("lineProtocolString");
         try {
-            influxDbHttpClient.writePoints(DATABASE, Optional.of(RETENTION_POLICY), points);
+            influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, points);
         } catch (UncheckedIOException e) {
             // Assert that the exception has the expected cause.
             assertSame(expectedCause, e.getCause());
@@ -115,7 +163,7 @@ public class InfluxDbHttpClientTest {
         List<DataPoint> points = getMockedDataPoints("lineProtocolString");
         try {
             // Since the status isn't "no content", the attempt to write should throw an InfluxDbHttpWriteException.
-            influxDbHttpClient.writePoints(DATABASE, Optional.of(RETENTION_POLICY), points);
+            influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, points);
         } catch (InfluxDbHttpWriteException e) {
             assertEquals(statusCode, e.getStatusCode());
             assertEquals(responseBody, e.getResponseBody());
@@ -177,6 +225,36 @@ public class InfluxDbHttpClientTest {
     }
 
     /**
+     * Get a {@link Request} argument that matches an InfluxDB write request with the given list of data points and
+     * retention policy.
+     * @param dataPoints A list of {@link DataPoint}.
+     * @param retentionPolicy The retention policy.
+     * @return A {@link Request} to be used as an argument when mocking/verifying a method invocation.
+     */
+    private Request writePointsRequest(List<DataPoint> dataPoints, String retentionPolicy) {
+        return argThat(new WriteRequestMatcher(dataPoints, retentionPolicy));
+    }
+
+    /**
+     * Get a {@link Request} argument that matches an InfluxDB write request for a given point.
+     * @param dataPoint A {@link DataPoint}.
+     * @return A {@link Request} to be used as an argument when mocking/verifying a method invocation.
+     */
+    private Request writePointRequest(DataPoint dataPoint) {
+        return argThat(new WriteRequestMatcher(Collections.singletonList(dataPoint)));
+    }
+
+    /**
+     * Get a {@link Request} argument that matches an InfluxDB write request for a given point and retention policy.
+     * @param dataPoint A {@link DataPoint}.
+     * @param retentionPolicy The retention policy.
+     * @return A {@link Request} to be used as an argument when mocking/verifying a method invocation.
+     */
+    private Request writePointRequest(DataPoint dataPoint, String retentionPolicy) {
+        return argThat(new WriteRequestMatcher(Collections.singletonList(dataPoint), retentionPolicy));
+    }
+
+    /**
      * Mock a {@link DataPoint} to return the specified line protocol string.
      * @param lineProtocolString The line protocol string.
      * @return A mocked {@link DataPoint}.
@@ -215,17 +293,20 @@ public class InfluxDbHttpClientTest {
      */
     private static class WriteRequestMatcher extends BaseMatcher<Request> {
         
-        private static final Map<String, String> EXPECTED_QUERY_PARAMS = new HashMap<String, String>() {{
-            put(InfluxDbHttpClient.QueryParam.DATABASE, DATABASE);
-            put(InfluxDbHttpClient.QueryParam.RETENTION_POLICY, RETENTION_POLICY);
-            put(InfluxDbHttpClient.QueryParam.PRECISION, TimestampPrecision.MILLISECONDS.getStringValue());
-        }};
-        
         private final List<DataPoint> dataPoints;
         private Optional<String> failureDescription = Optional.empty();
+        private final Map<String, String> expectedQueryParams = new HashMap<String, String>() {{
+            put(InfluxDbHttpClient.QueryParam.DATABASE, DATABASE);
+            put(InfluxDbHttpClient.QueryParam.PRECISION, TimestampPrecision.MILLISECONDS.getStringValue());
+        }};
 
         public WriteRequestMatcher(List<DataPoint> dataPoints) {
             this.dataPoints = dataPoints;
+        }
+        
+        public WriteRequestMatcher(List<DataPoint> dataPoints, String retentionPolicy) {
+            this.dataPoints = dataPoints;
+            expectedQueryParams.put(InfluxDbHttpClient.QueryParam.RETENTION_POLICY, retentionPolicy);
         }
 
         @Override
@@ -277,7 +358,7 @@ public class InfluxDbHttpClientTest {
             
             // Check the the request URL contains the expected query parameters.
             String requestUrlQuery = requestUrl.query();
-            return EXPECTED_QUERY_PARAMS.entrySet().stream()
+            return expectedQueryParams.entrySet().stream()
                     // Map to string that should be contains in the query string.
                     .map(entry -> String.join("=", entry.getKey(), entry.getValue()))
                     .allMatch(expectedContainsString -> checkQueryString(requestUrlQuery, expectedContainsString));

@@ -4,9 +4,10 @@
  */
 package com.spanning.influxdb.model;
 
+import com.google.common.base.Strings;
 import com.spanning.influxdb.util.LineProtocolStringUtils;
 
-import static java.util.Objects.requireNonNull;
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Class representing a field of an InfluxDB data point.
@@ -31,11 +32,10 @@ public class Field {
     }
 
     Field(String fieldName, Object fieldValue) {
-        if (fieldName == null || fieldName.isEmpty()) {
-            throw new IllegalArgumentException("fieldName can't be null or empty");
-        }
+        checkArgument(!Strings.isNullOrEmpty(fieldName), "fieldName can't be null or empty");
+        checkArgument(fieldValue != null, "fieldValue can't be null");
         this.fieldName = fieldName;
-        this.fieldValue = requireNonNull(fieldValue, "fieldValue can't be null");
+        this.fieldValue = fieldValue;
     }
 
     public String getFieldName() {

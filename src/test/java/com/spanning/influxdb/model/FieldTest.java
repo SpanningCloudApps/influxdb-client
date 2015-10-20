@@ -50,4 +50,9 @@ public class FieldTest {
         new Field("", new Object());
     }
     
+    @Test(expected = IllegalArgumentException.class)
+    public void testConstructorNullFieldValue() {
+        new Field("fieldValue", (Object) null);
+    }
+    
 }

@@ -4,6 +4,7 @@
  */
 package com.spanning.influxdb.model;
 
+import com.google.common.base.Strings;
 import com.spanning.influxdb.util.LineProtocolStringUtils;
 
 import java.time.Instant;
@@ -13,7 +14,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Objects.requireNonNull;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Class representing an InfluxDB data point.
@@ -95,9 +97,7 @@ public class DataPoint {
         private TimestampPrecision timestampPrecision = TimestampPrecision.MILLISECONDS;
         
         public Builder(String measurementName) {
-            if (measurementName == null || measurementName.isEmpty()) {
-                throw new IllegalArgumentException("measurementName can't be null or empty");
-            }
+            checkArgument(!Strings.isNullOrEmpty(measurementName), "measurementName can't be null or empty");
             this.measurementName = measurementName;
         }
 
@@ -122,8 +122,9 @@ public class DataPoint {
         }
 
         public Builder withTimestamp(long timestamp, TimestampPrecision timestampPrecision) {
+            checkArgument(timestampPrecision != null, "timestampPrecision can't be null");
             this.timestamp = timestamp;
-            this.timestampPrecision = requireNonNull(timestampPrecision, "timestampPrecision can't be null");
+            this.timestampPrecision = timestampPrecision;
             return this;
         }
 
@@ -132,9 +133,7 @@ public class DataPoint {
          * @return A {@link DataPoint}.
          */
         public DataPoint build() {
-            if (fields.isEmpty()) {
-                throw new IllegalStateException("At least 1 field must be provided.");
-            }
+            checkState(!fields.isEmpty(), "Can't build point without fields");
             return new DataPoint(measurementName, new ArrayList<>(tags), new ArrayList<>(fields), timestamp,
                     timestampPrecision);
         }

@@ -20,11 +20,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static java.util.Objects.requireNonNull;
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * {@link InfluxDbClient} implementation that uses the http(s) protocol.
@@ -75,16 +76,45 @@ public class InfluxDbHttpClient implements InfluxDbClient {
     }
     
     InfluxDbHttpClient(String baseUrl, Optional<InfluxDbCredentials> credentials, OkHttpClient httpClient) {
-        this.baseUrl = requireNonNull(baseUrl, "baseUrl can't be null");
+        checkArgument(baseUrl != null, "baseUrl can't be null");
+        this.baseUrl = baseUrl;
         this.credentials = credentials;
         this.httpClient = httpClient;
     }
 
     @Override
-    public void writePoints(String database, Optional<String> retentionPolicy, List<DataPoint> points) {
-        if (points == null || points.isEmpty()) {
-            throw new IllegalArgumentException("points must contain at least one DataPoint");
-        }
+    public void writePoint(String database, DataPoint point) {
+        writePoints(database, Optional.empty(), Collections.singletonList(point));
+    }
+
+    @Override
+    public void writePoint(String database, String retentionPolicy, DataPoint point) {
+        writePoints(database, Optional.ofNullable(retentionPolicy), Collections.singletonList(point));
+    }
+
+    @Override
+    public void writePoints(String database, List<DataPoint> points) {
+        writePoints(database, Optional.empty(), points);
+    }
+
+    @Override
+    public void writePoints(String database, String retentionPolicy, List<DataPoint> points) {
+        writePoints(database, Optional.ofNullable(retentionPolicy), points);
+    }
+
+    /**
+     * Write {@link DataPoint DataPoints} to InfluxDB in bulk, optionally with a specific retention policy.
+     * Note: All {@link DataPoint#timestamp} values for points in the {@code points} list should have the same
+     * precision, because the {@link DataPoint#timestampPrecision} value of the first point in the list will be used
+     * for all points written.
+     * @param database The database to which the points should be written.
+     * @param retentionPolicy An optional retention policy (see
+     * <a href="https://influxdb.com/docs/v0.9/concepts/glossary.html#retention-policy">
+     *  https://influxdb.com/docs/v0.9/concepts/glossary.html#retention-policy</a>)
+     * @param points A list of {@link DataPoint DataPoints}.
+     */
+    private void writePoints(String database, Optional<String> retentionPolicy, List<DataPoint> points) {
+        checkArgument(points != null && !points.isEmpty(), "points must contain at least one DataPoint");
         
         // Use the precision from the first point in points.
         String precisionString = points.get(0).getTimestampPrecision().getStringValue();
