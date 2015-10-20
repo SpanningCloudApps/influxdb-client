@@ -4,9 +4,13 @@
  */
 package com.spanning.influxdb.client.http;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spanning.influxdb.client.InfluxDbClient;
+import com.spanning.influxdb.client.exception.InfluxDbHttpQueryException;
 import com.spanning.influxdb.client.exception.InfluxDbHttpWriteException;
 import com.spanning.influxdb.model.DataPoint;
+import com.spanning.influxdb.model.QueryResponse;
+import com.spanning.influxdb.model.QueryResult;
 import com.squareup.okhttp.Credentials;
 import com.squareup.okhttp.HttpUrl;
 import com.squareup.okhttp.MediaType;
@@ -41,6 +45,7 @@ public class InfluxDbHttpClient implements InfluxDbClient {
      * InfluxDB endpoints.
      */
     public interface Endpoint {
+        String QUERY = "query";
         String WRITE = "write";
     }
 
@@ -50,19 +55,21 @@ public class InfluxDbHttpClient implements InfluxDbClient {
     public interface QueryParam {
         String DATABASE = "db";
         String PRECISION = "precision";
+        String QUERY = "q";
         String RETENTION_POLICY = "rp";
     }
 
     private final String baseUrl;
     private final Optional<InfluxDbCredentials> credentials;
     private final OkHttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
     /**
      * Create an {@link InfluxDbHttpClient} that makes requests without auth credentials. 
      * @param baseUrl The base URL for the InfluxDB http(s) API (e.g., http://localhost:8086).
      */
     public InfluxDbHttpClient(String baseUrl) {
-        this(baseUrl, Optional.empty(), new OkHttpClient());
+        this(baseUrl, Optional.empty(), new OkHttpClient(), new ObjectMapper());
     }
 
     /**
@@ -72,14 +79,16 @@ public class InfluxDbHttpClient implements InfluxDbClient {
      * @param password The password to use when making requests.
      */
     public InfluxDbHttpClient(String baseUrl, String username, String password) {
-        this(baseUrl, Optional.of(new InfluxDbCredentials(username, password)), new OkHttpClient());
+        this(baseUrl, Optional.of(new InfluxDbCredentials(username, password)), new OkHttpClient(), new ObjectMapper());
     }
     
-    InfluxDbHttpClient(String baseUrl, Optional<InfluxDbCredentials> credentials, OkHttpClient httpClient) {
+    InfluxDbHttpClient(String baseUrl, Optional<InfluxDbCredentials> credentials, OkHttpClient httpClient,
+                       ObjectMapper objectMapper) {
         checkArgument(baseUrl != null, "baseUrl can't be null");
         this.baseUrl = baseUrl;
         this.credentials = credentials;
         this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -100,6 +109,47 @@ public class InfluxDbHttpClient implements InfluxDbClient {
     @Override
     public void writePoints(String database, String retentionPolicy, List<DataPoint> points) {
         writePoints(database, Optional.ofNullable(retentionPolicy), points);
+    }
+
+    @Override
+    public List<QueryResult> executeQuery(String database, String query) {
+        // Build the URL.
+        HttpUrl url = urlBuilder(Endpoint.QUERY)
+                .addQueryParameter(QueryParam.DATABASE, database)
+                .addQueryParameter(QueryParam.QUERY, query)
+                .build();
+        
+        // Build the request.
+        Request request = requestBuilder(url)
+                .get()
+                .build();
+        
+        logger.debug("InfluxDB query request: {}", request);
+        
+        // Execute the request.
+        Response response;
+        try {
+            response = httpClient.newCall(request).execute();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        
+        logger.debug("InfluxDB write response: {}", response);
+        
+        // Parse the response body into a QueryResponse.
+        QueryResponse queryResponse;
+        try {
+            queryResponse = objectMapper.readValue(getResponseBodyString(response), QueryResponse.class);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        
+        // If the status code is not successful or there is an error message in the response, throw an exception.
+        if (!response.isSuccessful() || queryResponse.hasError()) {
+            throw new InfluxDbHttpQueryException(response.code(), queryResponse.getError());
+        }
+        
+        return queryResponse.getResults();
     }
 
     /**

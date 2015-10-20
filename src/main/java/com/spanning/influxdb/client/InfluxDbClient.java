@@ -5,6 +5,7 @@
 package com.spanning.influxdb.client;
 
 import com.spanning.influxdb.model.DataPoint;
+import com.spanning.influxdb.model.QueryResult;
 
 import java.util.List;
 
@@ -52,5 +53,13 @@ public interface InfluxDbClient {
      * @param points A list of {@link DataPoint DataPoints}.
      */
     void writePoints(String database, String retentionPolicy, List<DataPoint> points);
+
+    /**
+     * Execute an InfluxDB query.
+     * @param database The database against which the query will be run.
+     * @param query The query string.
+     * @return A list of {@link QueryResult}.
+     */
+    List<QueryResult> executeQuery(String database, String query);
     
 }
