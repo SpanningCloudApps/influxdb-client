@@ -96,7 +96,7 @@ public class InfluxDbHttpClient implements InfluxDbClient {
     }
     
     protected InfluxDbHttpClient(String baseUrl, Optional<InfluxDbCredentials> credentials, OkHttpClient httpClient,
-								 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper) {
         checkArgument(baseUrl != null, "baseUrl can't be null");
         this.baseUrl = baseUrl;
         this.credentials = credentials;
@@ -126,9 +126,9 @@ public class InfluxDbHttpClient implements InfluxDbClient {
 
     @Override
     public List<QueryResult> executeQuery(String database, String query) {
-		checkArgument(!Strings.isNullOrEmpty(database), "database can't be null or empty");
-		checkArgument(!Strings.isNullOrEmpty(query), "query can't be null");
-		
+        checkArgument(!Strings.isNullOrEmpty(database), "database can't be null or empty");
+        checkArgument(!Strings.isNullOrEmpty(query), "query can't be null");
+        
         // Build the URL.
         HttpUrl url = urlBuilder(Endpoint.QUERY)
                 .addQueryParameter(QueryParam.DATABASE, database)
@@ -180,7 +180,7 @@ public class InfluxDbHttpClient implements InfluxDbClient {
      * @param points A list of {@link DataPoint DataPoints}.
      */
     private void writePoints(String database, Optional<String> retentionPolicy, List<DataPoint> points) {
-		checkArgument(!Strings.isNullOrEmpty(database), "database can't be null or empty");
+        checkArgument(!Strings.isNullOrEmpty(database), "database can't be null or empty");
         checkArgument(points != null && !points.isEmpty(), "points must contain at least one DataPoint");
         
         // Use the precision from the first point in points.

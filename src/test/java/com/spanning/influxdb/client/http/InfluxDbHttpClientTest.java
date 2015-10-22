@@ -196,18 +196,18 @@ public class InfluxDbHttpClientTest {
         }
     }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testWritePointsNullDatabase() {
-		// Attempt to call writePoint with a null database. This should cause the client to throw an IllegalArgumentException.
-		influxDbHttpClient.writePoint(null, mockDataPoint("lineProtocolString"));
-	}
-	
-	@Test(expected = IllegalArgumentException.class)
-	public void testWritePointsEmptyDatabase() {
-		// Attempt to call writePoint with an empty string as the database argument. This should cause the client to
-		// throw an IllegalArgumentException.
-		influxDbHttpClient.writePoint("", mockDataPoint("lineProtocolString"));
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testWritePointsNullDatabase() {
+        // Attempt to call writePoint with a null database. This should cause the client to throw an IllegalArgumentException.
+        influxDbHttpClient.writePoint(null, mockDataPoint("lineProtocolString"));
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testWritePointsEmptyDatabase() {
+        // Attempt to call writePoint with an empty string as the database argument. This should cause the client to
+        // throw an IllegalArgumentException.
+        influxDbHttpClient.writePoint("", mockDataPoint("lineProtocolString"));
+    }
     
     @Test(expected = IllegalArgumentException.class)
     public void testWritePointsNullPointsList() {
@@ -324,30 +324,30 @@ public class InfluxDbHttpClientTest {
             verify(call, times(1)).execute();
         }
     }
-	
-	@Test(expected = IllegalArgumentException.class)
-	public void testExecuteQueryNullDatabase() {
-		// Attempt to call executeQuery with a null db argument. The client should throw an IllegalArgumentException.
-		influxDbHttpClient.executeQuery(null, "query");
-	}
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testExecuteQueryNullDatabase() {
+        // Attempt to call executeQuery with a null db argument. The client should throw an IllegalArgumentException.
+        influxDbHttpClient.executeQuery(null, "query");
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testExecuteQueryEmptyDatabase() {
-		// Attempt to call executeQuery with an empty db argument. The client should throw an IllegalArgumentException.
-		influxDbHttpClient.executeQuery("", "query");
-	}
-	
-	@Test(expected = IllegalArgumentException.class)
-	public void testExecuteQueryNullQuery() {
-		// Attempt to call executeQuery with a null query argument. The client should throw an IllegalArgumentException.
-		influxDbHttpClient.executeQuery("db", null);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testExecuteQueryEmptyDatabase() {
+        // Attempt to call executeQuery with an empty db argument. The client should throw an IllegalArgumentException.
+        influxDbHttpClient.executeQuery("", "query");
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testExecuteQueryNullQuery() {
+        // Attempt to call executeQuery with a null query argument. The client should throw an IllegalArgumentException.
+        influxDbHttpClient.executeQuery("db", null);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testExecuteQueryEmptyQuery() {
-		// Attempt to call executeQuery with an empty query argument. The client should throw an IllegalArgumentException.
-		influxDbHttpClient.executeQuery("db", "");
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testExecuteQueryEmptyQuery() {
+        // Attempt to call executeQuery with an empty query argument. The client should throw an IllegalArgumentException.
+        influxDbHttpClient.executeQuery("db", "");
+    }
 
     /**
      * Mock {@link #httpClient} to respond to all requests with an answer.
