@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 /**
  * Class representing a series in an InfluxDB query result.
  */
@@ -29,7 +27,6 @@ public class Series {
     @JsonCreator
     public Series(@JsonProperty("name") String name, @JsonProperty("tags") Map<String, String> tags,
                   @JsonProperty("columns") List<String> columns, @JsonProperty("values") List<List<Object>> values) {
-        checkArgument(name != null, "name should never be null");
         this.name = name;
         Optional.ofNullable(tags).ifPresent(this.tags::putAll);
         Optional.ofNullable(columns).ifPresent(this.columns::addAll);
