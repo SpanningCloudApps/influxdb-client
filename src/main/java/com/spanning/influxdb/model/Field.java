@@ -27,6 +27,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class Field {
     
     private static final String STRING_FIELD_VALUE_FORMAT = "\"%s\"";
+    private static final String INT_FIELD_VALUE_FORMAT = "%si";
 
     private final String fieldName;
     private final Object fieldValue;
@@ -35,7 +36,19 @@ public class Field {
         this(fieldName, (Object) fieldValue);
     }
     
-    public Field(String fieldName, Number fieldValue) {
+    public Field(String fieldName, Integer fieldValue) {
+        this(fieldName, (Object) fieldValue);
+    }
+
+    public Field(String fieldName, Long fieldValue) {
+        this(fieldName, (Object) fieldValue);
+    }
+
+    public Field(String fieldName, Float fieldValue) {
+        this(fieldName, (Object) fieldValue);
+    }
+
+    public Field(String fieldName, Double fieldValue) {
         this(fieldName, (Object) fieldValue);
     }
     
@@ -74,11 +87,12 @@ public class Field {
             // The line protocol string for a string field value is the string wrapped in double quotes with quotes within
             // the string escaped.
             return String.format(STRING_FIELD_VALUE_FORMAT, LineProtocolStringUtils.escapeQuotes((String) fieldValue));
-        } else if (fieldValue instanceof Number || fieldValue instanceof Boolean) {
-            // For booleans and numeric values, use the string value.
-            return String.valueOf(fieldValue);
+        } else if (fieldValue instanceof Integer || fieldValue instanceof Long) {
+            // Integers must be sent to InfluxDB with an "i" suffix. Otherwise, they'll be treated as floats.
+            return String.format(INT_FIELD_VALUE_FORMAT, fieldValue);
         } else {
-            throw new IllegalStateException("Invalid fieldValue type: " + fieldValue.getClass());
+            // For everything else (float types/booleans), use the string value of the field.
+            return String.valueOf(fieldValue);
         }
     }
     

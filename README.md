@@ -1,5 +1,5 @@
 # influxdb-client
-A java client for InfluxDB v0.9.2
+A java client for InfluxDB v0.9.3+
 
 ### Usage
 #### Create the client:

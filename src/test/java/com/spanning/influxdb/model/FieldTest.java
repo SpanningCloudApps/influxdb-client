@@ -32,24 +32,27 @@ public class FieldTest {
 
     @Test
     public void testLineProtocolStringIntegerField() {
-        assertEquals("field\\,\\ name\\,\\ =1234", new Field("field, name, ", 1234).lineProtocolString());
+        assertEquals("field\\,\\ name\\,\\ =1234i", new Field("field, name, ", 1234).lineProtocolString());
+    }
+    
+    @Test
+    public void testLineProtocolStringLongField() {
+        assertEquals("field\\,\\ name\\,\\ =1234i", new Field("field, name, ", 1234L).lineProtocolString());
     }
 
     @Test
     public void testLineProtocolStringFloatField() {
-        assertEquals("field\\,\\ name\\,\\ =1234.4321", new Field("field, name, ", 1234.4321).lineProtocolString());
+        assertEquals("field\\,\\ name\\,\\ =1234.4321", new Field("field, name, ", 1234.4321F).lineProtocolString());
+    }
+    
+    @Test
+    public void testLineProtocolStringDoubleField() {
+        assertEquals("field\\,\\ name\\,\\ =1234.4321", new Field("field, name, ", 1234.4321D).lineProtocolString());
     }
 
     @Test
     public void testLineProtocolStringBooleanField() {
         assertEquals("field\\,\\ name\\,\\ =true", new Field("field, name, ", true).lineProtocolString());
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void testLineProtocolStringUnsupportedObjectType() {
-        // Try to get the line protocol string for an unsupported type of field value. This should never happen as long
-        // as the Field.create factory methods are used to create fields.
-        new Field("badData", new Object()).lineProtocolString();
     }
     
     @Test(expected = IllegalArgumentException.class)
