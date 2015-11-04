@@ -59,13 +59,17 @@ public class InfluxDbHttpClientIntegrationTest {
     @Test
     public void testWriteAndQueryPoint() {
         // Write a single point to InfluxDB. Use a measurement name containing a space and comma to test that the client
-        // escapes the name properly.
+        // escapes the name properly. Use a tag value containing a space and comma to test that the client escapes
+        // tags properly.
         String measurementName = "measurementNam, e";
-        DataPoint dataPoint = createTestPoint(measurementName);
+        String tagName = "tagName";
+        String tagValue = ", t,agValue";
+        DataPoint dataPoint = createTestPoint(measurementName, tagName, tagValue);
         client.writePoint(DB, dataPoint);
         
         // Attempt to query for the point.
-        List<QueryResult> results = client.executeQuery(DB, String.format("SELECT * FROM /%s/", measurementName));
+        List<QueryResult> results = client.executeQuery(DB, String.format("SELECT * FROM /%s/ GROUP BY %s",
+                measurementName, tagName));
         
         // Since only one query was performed, there should only be one result in the results.
         assertEquals(1, results.size());
@@ -89,15 +93,19 @@ public class InfluxDbHttpClientIntegrationTest {
     @Test
     public void testWriteAndQueryPoints() {
         // Create a list of 10 DataPoints (with different measurement names) and write them to InfluxDB. Use
-        // measurement names containing spaces and commas to test that the client escapes names properly.
+        // measurement names containing spaces and commas to test that the client escapes names properly. Use a
+        // tag value containing a space and comma to test that the client escapes tags properly.
         String measurementNamePrefix = "measurementNam, e";
+        String tagName = "tagName";
+        String tagValue = ", t,agValue";
         List<DataPoint> dataPoints = IntStream.range(0, 10)
-                .mapToObj(i -> createTestPoint(measurementNamePrefix + i))
+                .mapToObj(i -> createTestPoint(measurementNamePrefix + i, tagName, tagValue))
                 .collect(Collectors.toList());
         client.writePoints(DB, dataPoints);
         
         // Attempt to query for the points.
-        List<QueryResult> results = client.executeQuery(DB, String.format("SELECT * FROM /%s.*/", measurementNamePrefix));
+        List<QueryResult> results = client.executeQuery(DB, String.format("SELECT * FROM /%s.*/ GROUP BY %s",
+                measurementNamePrefix, tagName));
 
         // Since only one query was performed, there should only be one result in the results.
         assertEquals(1, results.size());
@@ -145,7 +153,7 @@ public class InfluxDbHttpClientIntegrationTest {
         client.executeQuery(nonExistentDb, String.format("DROP DATABASE %s", nonExistentDb));
         try {
             // Attempt to write a point to nonExistentDb. Since the database doesn't exist, this should fail.
-            client.writePoint(nonExistentDb, createTestPoint("measurementName"));
+            client.writePoint(nonExistentDb, createTestPoint("measurementName", "tagName", "tagValue"));
         } catch (InfluxDbHttpWriteException e) {
             // The status code should be 404 (not found).
             assertEquals(404, e.getStatusCode());
@@ -262,15 +270,14 @@ public class InfluxDbHttpClientIntegrationTest {
      * Create a test {@link DataPoint} with a string, boolean, int, and float field.
      * @return A {@link DataPoint}.
      */
-    private static DataPoint createTestPoint(String measurementName) {
+    private static DataPoint createTestPoint(String measurementName, String tagName, String tagValue) {
         return new DataPoint.Builder(measurementName)
                 // Use a string value containing quotes to test that the client escapes fields properly.
                 .withField("stringField", "\"stringValue\"")
                 .withField("booleanField", true)
                 .withField("intField", 1234)
                 .withField("floatField", 1234.4321)
-                // Use a tag value containing a space and comma to test that the client escapes tags properly.
-                .withTag("tagName", ", t,agValue")
+                .withTag(tagName, tagValue)
                 .build();
     }
     

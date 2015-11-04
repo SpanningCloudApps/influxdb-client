@@ -1,5 +1,5 @@
 # influxdb-client
-A java client for InfluxDB v0.9.2
+A java client for InfluxDB v0.9.3+
 
 ### Usage
 #### Create the client:
@@ -56,7 +56,7 @@ Note: You can also write multiple points in a single request using the `InfluxDb
 
 #### Query:
 ```java
-List<QueryResult> results = client.executeQuery("databaseName", "SELECT * FROM measurementName");
+List<QueryResult> results = client.executeQuery("databaseName", "SELECT * FROM measurementName GROUP BY tagName");
 ```
 This will result in the following request being made:
 ```
