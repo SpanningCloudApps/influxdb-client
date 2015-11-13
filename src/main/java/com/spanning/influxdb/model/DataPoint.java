@@ -122,12 +122,27 @@ public class DataPoint {
             fields.add(new Field(fieldName, fieldValue));
             return this;
         }
-
-        public Builder withField(String fieldName, Number fieldValue) {
+        
+        public Builder withField(String fieldName, Integer fieldValue) {
             fields.add(new Field(fieldName, fieldValue));
             return this;
         }
 
+        public Builder withField(String fieldName, Long fieldValue) {
+            fields.add(new Field(fieldName, fieldValue));
+            return this;
+        }
+
+        public Builder withField(String fieldName, Float fieldValue) {
+            fields.add(new Field(fieldName, fieldValue));
+            return this;
+        }
+        
+        public Builder withField(String fieldName, Double fieldValue) {
+            fields.add(new Field(fieldName, fieldValue));
+            return this;
+        }
+        
         public Builder withField(String fieldName, Boolean fieldValue) {
             fields.add(new Field(fieldName, fieldValue));
             return this;
