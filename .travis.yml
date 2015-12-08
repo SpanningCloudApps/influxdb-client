@@ -10,9 +10,9 @@ before_install:
   - sudo service influxdb start
   # Sleep for 5 seconds while InfluxDB starts.
   - sleep 5
-  - /opt/influxdb/influx -execute "CREATE USER root WITH PASSWORD 'root' WITH ALL PRIVILEGES"
+  - /usr/bin/influx -execute "CREATE USER root WITH PASSWORD 'root' WITH ALL PRIVILEGES"
   # Enable the http.auth-enabled setting in the InfluxDB config and restart the InfluxDB service.
-  - sudo sed -i 's/auth-enabled.*/auth-enabled = true/' /etc/opt/influxdb/influxdb.conf
+  - sudo sed -i 's/auth-enabled.*/auth-enabled = true/' /etc/influxdb/influxdb.conf
   - sudo service influxdb restart
 
 script: mvn clean package verify
