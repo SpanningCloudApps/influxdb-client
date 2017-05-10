@@ -3,16 +3,16 @@ jdk:
   - oraclejdk8
 
 before_install:
-  # Install InfluxDB v0.9.5.1 (required for integration tests).
-  - wget http://influxdb.s3.amazonaws.com/influxdb_0.9.5.1_amd64.deb
-  - sudo dpkg -i influxdb_0.9.5.1_amd64.deb
+  # Install InfluxDB v1.2.1 (required for integration tests).
+  - wget https://dl.influxdata.com/influxdb/releases/influxdb_1.2.1_amd64.deb
+  - sudo dpkg -i influxdb_1.2.1_amd64.deb
   # Start InfluxDB and create admin user.
   - sudo service influxdb start
   # Sleep for 5 seconds while InfluxDB starts.
   - sleep 5
   - /usr/bin/influx -execute "CREATE USER root WITH PASSWORD 'root' WITH ALL PRIVILEGES"
   # Enable the http.auth-enabled setting in the InfluxDB config and restart the InfluxDB service.
-  - sudo sed -i 's/auth-enabled.*/auth-enabled = true/' /etc/influxdb/influxdb.conf
+  - sudo sed -i 's/# auth-enabled.*/auth-enabled = true/' /etc/influxdb/influxdb.conf
   - sudo service influxdb restart
 
 script: mvn clean package verify
