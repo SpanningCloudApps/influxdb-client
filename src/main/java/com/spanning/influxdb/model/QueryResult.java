@@ -17,6 +17,7 @@
 package com.spanning.influxdb.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.Optional;
 /**
  * Class representing the result of executing an InfluxDB query.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class QueryResult {
     
     private final List<Series> series = new ArrayList<>();
