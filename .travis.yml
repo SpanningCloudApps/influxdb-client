@@ -3,9 +3,9 @@ jdk:
   - oraclejdk8
 
 before_install:
-  # Install InfluxDB v0.9.5.1 (required for integration tests).
-  - wget http://influxdb.s3.amazonaws.com/influxdb_0.9.5.1_amd64.deb
-  - sudo dpkg -i influxdb_0.9.5.1_amd64.deb
+  # Install InfluxDB v1.2.1-c1.2.2 (required for integration tests).
+  - wget https://dl.influxdata.com/enterprise/releases/influxdb-data_1.2.1-c1.2.2_amd64.deb
+  - sudo dpkg -i influxdb-data_1.2.1-c1.2.2_amd64.deb
   # Start InfluxDB and create admin user.
   - sudo service influxdb start
   # Sleep for 5 seconds while InfluxDB starts.
