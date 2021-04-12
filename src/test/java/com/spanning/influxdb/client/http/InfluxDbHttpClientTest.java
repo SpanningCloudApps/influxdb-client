@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2015 EMC Corporation
  * All Rights Reserved
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,16 @@
  * limitations under the License.
  */
 package com.spanning.influxdb.client.http;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spanning.influxdb.client.exception.InfluxDbHttpQueryException;
@@ -32,24 +42,13 @@ import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 import com.squareup.okhttp.ResponseBody;
 import okio.Buffer;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -68,38 +67,38 @@ public class InfluxDbHttpClientTest {
     private static final String RETENTION_POLICY = "retentionPolicy";
     private static final String USERNAME = "username";
     private static final String PASSWORD = "password";
-    
+
     @Mock
     private OkHttpClient httpClient;
-    
+
     @Mock
     private ObjectMapper objectMapper;
-    
+
     private InfluxDbHttpClient influxDbHttpClient;
-    
+
     @Before
     public void setupClient() {
         Optional<InfluxDbHttpClient.InfluxDbCredentials> credentials =
                 Optional.of(new InfluxDbHttpClient.InfluxDbCredentials(USERNAME, PASSWORD));
         influxDbHttpClient = new InfluxDbHttpClient(BASE_URL, credentials, httpClient, objectMapper);
     }
-    
+
     @Test
     public void testWritePoint() throws IOException {
         // When a request is executed using httpClient, answer with a response indicating the request was executed
         // successfully.
         Call call = mockHttpClientResponse(responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null));
-        
+
         // Write a data point using the InfluxDB client and verify that the expected request was executed.
         DataPoint point = mockDataPoint("lineProtocolString");
         influxDbHttpClient.writePoint(DATABASE, point);
-        
+
         // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
         // should have been "call", so also verify that it was executed.
         verify(httpClient, times(1)).newCall(writePointRequest(point));
         verify(call, times(1)).execute();
     }
-    
+
     @Test
     public void testWritePointWithRP() throws IOException {
         // When a request is executed using httpClient, answer with a response indicating the request was executed
@@ -115,23 +114,23 @@ public class InfluxDbHttpClientTest {
         verify(httpClient, times(1)).newCall(writePointRequest(point, RETENTION_POLICY));
         verify(call, times(1)).execute();
     }
-    
+
     @Test
     public void testWritePoints() throws IOException {
         // When a request is executed using httpClient, answer with a response indicating the request was executed
         // successfully.
         Call call = mockHttpClientResponse(responseAnswer(InfluxDbHttpClient.NO_CONTENT_STATUS_CODE, null));
-        
+
         // Write a list of data points using the InfluxDB client and verify that the expected request was executed.
         List<DataPoint> points = getMockedDataPoints("lineProtocolString");
         influxDbHttpClient.writePoints(DATABASE, points);
-        
+
         // Verify that a call was retrieved for a write request. The call that was returned by httpClient.newCall
         // should have been "call", so also verify that it was executed.
         verify(httpClient, times(1)).newCall(writePointsRequest(points));
         verify(call, times(1)).execute();
     }
-    
+
     @Test
     public void testWritePointsWithRP() throws IOException {
         // When a request is executed using httpClient, answer with a response indicating the request was executed
@@ -147,7 +146,7 @@ public class InfluxDbHttpClientTest {
         verify(httpClient, times(1)).newCall(writePointsRequest(points, RETENTION_POLICY));
         verify(call, times(1)).execute();
     }
-    
+
     @Test(expected = UncheckedIOException.class)
     public void testWritePointsIOExceptionWhenExecutingRequest() throws IOException {
         // When the write request is executed, throw a known IOException.
@@ -169,7 +168,7 @@ public class InfluxDbHttpClientTest {
             verify(call, times(1)).execute();
         }
     }
-    
+
     @Test(expected = InfluxDbHttpWriteException.class)
     public void testWritePointsInvalidStatusCode() throws IOException {
         // When a write request is executed, answer with a response with a non-204 status code and error message.
@@ -201,54 +200,54 @@ public class InfluxDbHttpClientTest {
         // Attempt to call writePoint with a null database. This should cause the client to throw an IllegalArgumentException.
         influxDbHttpClient.writePoint(null, mockDataPoint("lineProtocolString"));
     }
-    
+
     @Test(expected = IllegalArgumentException.class)
     public void testWritePointsEmptyDatabase() {
         // Attempt to call writePoint with an empty string as the database argument. This should cause the client to
         // throw an IllegalArgumentException.
         influxDbHttpClient.writePoint("", mockDataPoint("lineProtocolString"));
     }
-    
+
     @Test(expected = IllegalArgumentException.class)
     public void testWritePointsNullPointsList() {
         // Attempt to write a null list of points. This should cause the client to throw an IllegalArgumentException.
         influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, null);
     }
-    
+
     @Test(expected = IllegalArgumentException.class)
     public void testWritePointsEmptyPointsList() {
         // Attempt to write an empty list of points. This should cause the client to throw an IllegalArgumentException.
         influxDbHttpClient.writePoints(DATABASE, RETENTION_POLICY, Collections.emptyList());
     }
-    
+
     @Test
     public void testExecuteQuery() throws IOException {
         // Mock httpClient to return a successful response with a known response body.
         String responseBody = "responseBody";
         Call call = mockHttpClientResponse(
                 responseAnswer(200, ResponseBody.create(InfluxDbHttpClient.TEXT_PLAIN, responseBody)));
-        
+
         // Mock objectMapper to parse responseBody into a known QueryResponse with no error message.
         List<QueryResult> results = Collections.singletonList(mock(QueryResult.class));
         QueryResponse queryResponse = new QueryResponse(results, null);
         when(objectMapper.readValue(responseBody, QueryResponse.class)).thenReturn(queryResponse);
-        
+
         // Execute the query using the client and assert the expected results are returned.
         String query = "query";
         assertEquals(results, influxDbHttpClient.executeQuery(DATABASE, query));
-        
+
         // Verify that a call was retrieved for a query request. The call that was returned by httpClient.newCall
         // should have been "call", so also verify that it was executed.
         verify(httpClient, times(1)).newCall(queryRequest(query));
         verify(call, times(1)).execute();
     }
-    
+
     @Test(expected = UncheckedIOException.class)
     public void testExecuteQueryIOExceptionWhenExecutingRequest() throws IOException {
         // When the query request is executed, throw a known IOException.
         IOException expectedCause = new IOException("something bad happened");
         Call call = mockHttpClientResponse(invocation -> { throw expectedCause; });
-        
+
         // Attempt to execute the query.
         String query = "query";
         try {
@@ -264,7 +263,7 @@ public class InfluxDbHttpClientTest {
             verify(call, times(1)).execute();
         }
     }
-    
+
     @Test(expected = InfluxDbHttpQueryException.class)
     public void testExecuteQueryUnsuccessfulStatusCode() throws IOException {
         // Mock httpClient to return an unsuccessful response with a known status code and response body.
@@ -272,12 +271,12 @@ public class InfluxDbHttpClientTest {
         String responseBody = "responseBody";
         Call call = mockHttpClientResponse(
                 responseAnswer(statusCode, ResponseBody.create(InfluxDbHttpClient.TEXT_PLAIN, responseBody)));
-        
+
         // Mock objectMapper to parse responseBody into a known QueryResponse containing an error message.
         String errorMessage = "errorMessage";
         QueryResponse queryResponse = new QueryResponse(Collections.emptyList(), errorMessage);
         when(objectMapper.readValue(responseBody, QueryResponse.class)).thenReturn(queryResponse);
-        
+
         // Attempt to execute the query.
         String query = "query";
         try {
@@ -294,7 +293,7 @@ public class InfluxDbHttpClientTest {
             verify(call, times(1)).execute();
         }
     }
-    
+
     @Test(expected = InfluxDbHttpQueryException.class)
     public void testExecuteQueryErrorInResponse() throws IOException {
         // Mock httpClient to return a response with a successful status code and known response body.
@@ -302,12 +301,12 @@ public class InfluxDbHttpClientTest {
         String responseBody = "responseBody";
         Call call = mockHttpClientResponse(
                 responseAnswer(statusCode, ResponseBody.create(InfluxDbHttpClient.TEXT_PLAIN, responseBody)));
-        
+
         // Mock objectMapper to parse responseBody into a known QueryResponse containing an error message.
         String errorMessage = "errorMessage";
         QueryResponse queryResponse = new QueryResponse(Collections.emptyList(), errorMessage);
         when(objectMapper.readValue(responseBody, QueryResponse.class)).thenReturn(queryResponse);
-        
+
         // Attempt to execute the query.
         String query = "query";
         try {
@@ -324,7 +323,7 @@ public class InfluxDbHttpClientTest {
             verify(call, times(1)).execute();
         }
     }
-    
+
     @Test(expected = IllegalArgumentException.class)
     public void testExecuteQueryNullDatabase() {
         // Attempt to call executeQuery with a null db argument. The client should throw an IllegalArgumentException.
@@ -336,7 +335,7 @@ public class InfluxDbHttpClientTest {
         // Attempt to call executeQuery with an empty db argument. The client should throw an IllegalArgumentException.
         influxDbHttpClient.executeQuery("", "query");
     }
-    
+
     @Test(expected = IllegalArgumentException.class)
     public void testExecuteQueryNullQuery() {
         // Attempt to call executeQuery with a null query argument. The client should throw an IllegalArgumentException.
@@ -359,7 +358,7 @@ public class InfluxDbHttpClientTest {
         // Mock a Call that answers with responseAnswer when executed.
         Call newCall = mock(Call.class);
         when(newCall.execute()).then(responseAnswer);
-        
+
         // Mock httpClient.newCall to return newCall.
         when(httpClient.newCall(any())).thenReturn(newCall);
         return newCall;
@@ -467,7 +466,7 @@ public class InfluxDbHttpClientTest {
         Request request = new Request.Builder()
                 .url(BASE_URL)
                 .build();
-        
+
         // Answer with a response containing the specified status/body.
         return invocation -> new Response.Builder()
                 .request(request)
@@ -480,8 +479,8 @@ public class InfluxDbHttpClientTest {
     /**
      * Class used to match an InfluxDB API request.
      */
-    private static class InfluxDbRequestMatcher extends BaseMatcher<Request> {
-        
+    private static class InfluxDbRequestMatcher implements ArgumentMatcher<Request> {
+
         private Optional<String> failureDescription = Optional.empty();
         private final String endpoint;
         private final String body;
@@ -497,22 +496,15 @@ public class InfluxDbHttpClientTest {
         }
 
         @Override
-        public boolean matches(Object o) {
+        public boolean matches(Request request) {
             failureDescription = Optional.empty();
 
-            if (!(o instanceof Request)) {
-                failureDescription = Optional.of("Request object");
-                return false;
-            }
-            
-            Request request = (Request) o;
-            
             // Check that the request method is expected.
             if (!method.equals(request.method())) {
                 failureDescription = Optional.of(String.format("Request with method=%s", method));
                 return false;
             }
-            
+
             // If body is expected, check the request body.
             if (body != null) {
                 String requestBody;
@@ -554,11 +546,6 @@ public class InfluxDbHttpClientTest {
                     .allMatch(expectedContainsString -> checkQueryString(requestUrlQuery, expectedContainsString));
         }
 
-        @Override
-        public void describeTo(Description description) {
-            failureDescription.ifPresent(description::appendText);
-        }
-        
         public InfluxDbRequestMatcher withExpectedQueryParam(String name, String value) {
             expectedQueryParams.put(name, value);
             return this;
@@ -572,7 +559,5 @@ public class InfluxDbHttpClientTest {
             }
             return true;
         }
-        
     }
-    
 }
