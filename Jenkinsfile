@@ -61,10 +61,10 @@ pipeline {
             withEnv(["PATH=${MVN_CMD_DIR}:${PATH}"]) {
               sh(label: 'maven set version',
                 script: "./mvnw versions:set -DnewVersion=${BUILD_VERSION} -DprocessAllModules -DgenerateBackupPoms=false")
-              sh(label: 'maven build',
+              sh(label: 'maven package',
                 script: "./mvnw clean package")
               sh(label: "maven publish",
-                script: "./mvnw clean deploy -s settings.xml")
+                script: "./mvnw clean deploy -s settings.xml -DskipTests")
             }
           }
         }
