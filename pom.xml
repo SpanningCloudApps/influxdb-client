@@ -13,6 +13,14 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>codeartifact</id>
+            <name>codeartifact</name>
+            <url>${env.CODE_ARTIFACT_URL}</url>
+        </repository>
+    </distributionManagement>
+
     <dependencies>
         <dependency>
             <groupId>com.squareup.okhttp</groupId>
