@@ -26,21 +26,21 @@ pipeline {
         CODE_ARTIFACT_AUTH_TOKEN = sh(returnStdout: true,
           label: 'Get CodeArtifact auth token',
           script: '''#!/bin/bash
-                                                 aws codeartifact get-authorization-token \
-                                                    --region $REGION \
-                                                    --domain $DOMAIN \
-                                                    --query authorizationToken \
-                                                    --output text \
-                                                    --duration-seconds 900''').trim()
+                     aws codeartifact get-authorization-token \
+                        --region $REGION \
+                        --domain $DOMAIN \
+                        --query authorizationToken \
+                        --output text \
+                        --duration-seconds 900''').trim()
         CODE_ARTIFACT_URL = sh(returnStdout: true,
           label: 'Get CodeArtifact URL',
           script: '''#!/bin/bash
-                                          aws codeartifact get-repository-endpoint \
-                                            --region $REGION \
-                                            --domain $DOMAIN \
-                                            --repository $REPOSITORY_NAME \
-                                            --format $REPOSITORY_FORMAT \
-                                            --output text''').trim()
+                     aws codeartifact get-repository-endpoint \
+                       --region $REGION \
+                       --domain $DOMAIN \
+                       --repository $REPOSITORY_NAME \
+                       --format $REPOSITORY_FORMAT \
+                       --output text''').trim()
         BUILD_VERSION = "${TIMESTAMP}.${GIT_COMMIT.substring(0, 9)}.${BUILD_NUMBER}"
       }
       steps {
@@ -60,11 +60,11 @@ pipeline {
           withMaven(mavenOpts: '-XX:+UseParallelGC') {
             withEnv(["PATH=${MVN_CMD_DIR}:${PATH}"]) {
               sh(label: 'maven set version',
-                script: "mvn versions:set -DnewVersion=${BUILD_VERSION} -DprocessAllModules -DgenerateBackupPoms=false")
+                script: "./mvnw versions:set -DnewVersion=${BUILD_VERSION} -DprocessAllModules -DgenerateBackupPoms=false")
               sh(label: 'maven build',
-                script: "mvn clean package -DskipTests=true -DskipStaticAnalyse=true")
+                script: "./mvnw clean package")
               sh(label: "maven publish",
-                script: "mvn clean deploy -s settings.xml -DskipTests=true -DskipStaticAnalyse=true")
+                script: "./mvnw clean deploy -s settings.xml")
             }
           }
         }
