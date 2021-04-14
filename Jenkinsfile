@@ -62,7 +62,7 @@ pipeline {
               sh(label: 'maven set version',
                 script: "./mvnw versions:set -DnewVersion=${BUILD_VERSION} -DprocessAllModules -DgenerateBackupPoms=false")
               sh(label: 'maven package',
-                script: "./mvnw clean package")
+                script: "./mvnw clean package -DskipTests")
               sh(label: "maven publish",
                 script: "./mvnw clean deploy -s settings.xml -DskipTests")
             }
