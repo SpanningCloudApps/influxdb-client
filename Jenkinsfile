@@ -10,7 +10,7 @@ pipeline {
   environment {
     REGION = 'us-east-1'
     DOMAIN = "spanning"
-    REPOSITORY_NAME = "test"
+    REPOSITORY_NAME = "shared"
     REPOSITORY_FORMAT = "maven"
     BUILD_IMAGE = 'maven:3.6.3-openjdk-11'
     TIMESTAMP = (new Date()).format('yyyyMMdd-HHmm')
