@@ -12,7 +12,7 @@ pipeline {
     DOMAIN = "spanning"
     REPOSITORY_NAME = "shared"
     REPOSITORY_FORMAT = "maven"
-    BUILD_IMAGE = 'maven:3.6.3-openjdk-11'
+    BUILD_IMAGE = 'openjdk:17.0.2'
     TIMESTAMP = (new Date()).format('yyyyMMdd-HHmm')
   }
   
